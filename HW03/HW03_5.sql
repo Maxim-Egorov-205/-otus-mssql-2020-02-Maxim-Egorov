@@ -2,12 +2,17 @@
 --Приложите план запроса и его анализ, а также ход ваших рассуждений по поводу оптимизации.
 SELECT Invoices.InvoiceID,
 	   Invoices.InvoiceDate,
+
 		(
 		  SELECT People.FullName
 		  FROM Application.People
 		  WHERE people.PersonID = Invoices.SalespersonPersonID
 		) AS SalesPersonName,
+
+
+
 		SalesTotals.TotalSumm AS TotalSummByInvoice,
+
 		( SELECT SUM(OrderLines.PickedQuantity*OrderLines.UnitPrice)                               -- количество выбранное со склада * цена единицы измерения
 		  FROM Sales.OrderLines
 		  WHERE OrderLines.OrderId = (SELECT Orders.OrderId                                        -- ид заказа, для которых были оплачены счета и заказ был скомплектован
@@ -15,6 +20,9 @@ SELECT Invoices.InvoiceID,
 									  WHERE Orders.PickingCompletedWhen IS NOT NULL                --дата комплектации заказа заполнена
 										AND Orders.OrderId = Invoices.OrderId)
 		) AS TotalSummForPickedItems
+
+
+
 FROM Sales.Invoices
 	JOIN (
 		  SELECT InvoiceId, SUM(Quantity*UnitPrice) AS TotalSumm
@@ -33,10 +41,58 @@ ORDER BY TotalSumm DESC
 -- итоговую сумму счета
 -- итоговую сумму каждого соответствующего счету скомплектованного заказа (дата комплектации заполнена - не нулл)
 
+
+
+--АНАЛИЗ ПЛАНА ЗАПРОСА (считаем ветки сверху вниз, всего 5 веток)
+--1. index scan таблицы People, стоимость невысокая
+		--соответствует подзапросу 
+		--(
+		--  SELECT People.FullName
+		--  FROM Application.People
+		--  WHERE people.PersonID = Invoices.SalespersonPersonID
+		--) AS SalesPersonName,
+
+--2. index scan таблицы InvoicesLines стоимость невысокая, 
+          --соответствует подзапросу 
+		  --SELECT InvoiceId, SUM(Quantity*UnitPrice) AS TotalSumm
+		  --FROM Sales.InvoiceLines
+		  --GROUP BY InvoiceId
+		  --HAVING SUM(Quantity*UnitPrice) > 27000
+
+--3. index scan таблицы Invoices, стоимость невысокая , джоин Invoices с подзапросом из п.2.
+--FROM Sales.Invoices
+--	JOIN (
+--		  SELECT InvoiceId, SUM(Quantity*UnitPrice) AS TotalSumm
+--		  FROM Sales.InvoiceLines
+--		  GROUP BY InvoiceId
+--		  HAVING SUM(Quantity*UnitPrice) > 27000
+--		  ) AS SalesTotals	
+--		ON Invoices.InvoiceID = SalesTotals.InvoiceID
+
+
+--4 и 5-я ветка.
+	    --самая дорогая операция d 4-й ветке - index scan таблицы OrderLines
+		--( SELECT SUM(OrderLines.PickedQuantity*OrderLines.UnitPrice)                               -- количество выбранное со склада * цена единицы измерения
+		--  FROM Sales.OrderLines
+		--  WHERE OrderLines.OrderId = (SELECT Orders.OrderId                                        -- ид заказа, для которых были оплачены счета и заказ был скомплектован
+		--							  FROM Sales.Orders
+		--							  WHERE Orders.PickingCompletedWhen IS NOT NULL                --дата комплектации заказа заполнена
+		--								AND Orders.OrderId = Invoices.OrderId)
+		--) AS TotalSummForPickedItems
+
+
+--ход рассуждений по поводу оптимизации:
+--проблемное место - дорогой indexscan 4-й ветки, может быть решено добавлением некластерного индекса на таблицу OrderLines на все поля, указанные в плане запроса.
+--но создавать индекс для каждого запроса - места на диске не хватит, поэтому надо попробовать переписать запрос,
+--т.к. основная проблема, на мой взгляд - плохая читабельность и частое использование связанных подзапросов
+
 --оптимизированный запрос
 --Подзапросы были вынесены в отдельные CTE (как для удобства чтения, так и для избавления от подзапросов)
 --запрос был переписан так, чтобы не было связанных подзапросов, выдающих набор данных для каждой строки основной таблицы
 --хотя считается, что  SQL server последних версий с этим справляется, я решил лишний раз не рисковать
+
+--До оптимизации стоимость была около 9
+--После оптимизации - около 3
 
 WITH CteSalesTotals AS -- все счета, сумма которых больше 27 000 долларов
 (
@@ -74,4 +130,4 @@ GROUP BY i.InvoiceID,
 	     i.OrderID,
 	     ct2.SalesPersonName,
 	     ct1.TotalSumm
-ORDER BY (5) DESC
+ORDER BY SUM(ol.PickedQuantity*ol.UnitPrice)  DESC

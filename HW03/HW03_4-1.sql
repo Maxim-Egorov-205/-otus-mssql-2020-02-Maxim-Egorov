@@ -3,12 +3,11 @@
 SELECT p.PersonID,
 	   p.FullName
 FROM [Application].[People] p
-WHERE  NOT EXISTS (SELECT SalespersonPersonID --все id продажников, которые создавали заказы
-	FROM SALES.ORDERS)
+WHERE  NOT EXISTS (SELECT o.SalespersonPersonID  FROM SALES.ORDERS o WHERE p.PersonID=o.SalespersonPersonID)
    AND p.IsSalesperson=1 --продажники
 
 --1.2.через WITH (для производных таблиц)
-WITH CteSalesPersonOrders AS              --все id продажников, которые создавали заказы
+WITH CteSalesPersonOrders AS                                            --все id продажников, которые создавали заказы
 (
 	SELECT  DISTINCT SalespersonPersonID
 	FROM Sales.Orders
@@ -103,13 +102,13 @@ FROM sales.orders o
 	JOIN Sales.Customers c
 		ON  o.CustomerID=c.CustomerID
 	JOIN Application.Cities ct 
-		ON  c.DeliveryCityID=ct.CityId   
--- не понятно, в какой таблице есть id человека, упаковавшего товар,
--- в таблицах Warehouse не нашел
--- более менее по смыслу подходит sales.orders.PickedByPersonID      		    
+		ON  c.DeliveryCityID=ct.CityId  
+	JOIN Sales.Invoices i 
+		ON o.OrderID=i.OrderID	  		    
     JOIN Application.People	p
-		ON o.PickedByPersonID=p.PersonID    
-		                                    											
+		ON i.PackedByPersonID=p.PersonID    
+ORDER BY ct.CityID,
+	     p.FullName		                                    											
 --4.2. подзапросом
 SELECT DISTINCT ct.CityID,
 		        ct.CityName,
@@ -121,8 +120,10 @@ FROM sales.orders o
 		ON  o.CustomerID=c.CustomerID
 	JOIN Application.Cities ct 
 		ON  c.DeliveryCityID=ct.CityId   
-	JOIN Application.People	p
-		ON o.PickedByPersonID=p.PersonID    	                                   											
+	JOIN Sales.Invoices i 
+		ON o.OrderID=i.OrderID	  		    
+    JOIN Application.People	p
+		ON i.PackedByPersonID=p.PersonID       	                                   											
 WHERE EXISTS 
 	(
 		SELECT m.StockItemID
@@ -133,3 +134,5 @@ WHERE EXISTS
 			  ) m
 		WHERE ol.StockItemID = m.StockItemID
 	)
+ORDER BY ct.CityID,
+	     p.FullName	
