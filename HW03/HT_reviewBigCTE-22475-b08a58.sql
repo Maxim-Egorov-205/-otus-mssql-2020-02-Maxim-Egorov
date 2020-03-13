@@ -67,9 +67,6 @@ SELECT top (@DFBatchSize)                                    -- размер пакета
 
 
 
-
-
---cte2 ???
 cteDeletedDFMatchedRules
 as
 (
