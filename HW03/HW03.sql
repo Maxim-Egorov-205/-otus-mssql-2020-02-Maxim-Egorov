@@ -252,4 +252,4 @@ GROUP BY i.InvoiceID,
 	     i.OrderID,
 	     ct2.SalesPersonName,
 	     ct1.TotalSumm
-ORDER BY SUM(ol.PickedQuantity*ol.UnitPrice)  DESC
+ORDER BY TotalSummForPickedItems	  DESC
