@@ -255,7 +255,7 @@ INSERT INTO dbo.MyEmployees VALUES
 ,(16, N'David',N'Bradley', N'Marketing Manager', 4, 273)
 ,(23, N'Mary', N'Gibson', N'Marketing Specialist', 4, 16);
 
-<<<<<<< HEAD
+
 DECLARE @MyEmployees TABLE (EmployeeID INT, Name VARCHAR(254), Title VARCHAR(254), EmployeeLevel INT) --объявляем табличную переменную
 
 DROP TABLE IF EXISTS #MyEmployees             --создаем локальную временную таблицу (можно было не создавать, создатся и так при inserte)
@@ -263,13 +263,7 @@ CREATE TABLE #MyEmployees (EmployeeID INT, Name VARCHAR(254), Title VARCHAR(254)
 
 WITH CTE_MyEmployees (EmployeeID,FirstName,LastName,Title,ManagerID,EmployeeLevel,EmployeeLevelText) AS 
 (
-	SELECT EmployeeID,	       
-=======
-WITH CTE_MyEmployees (EmployeeID,FirstName,LastName,Title,ManagerID,EmployeeLevel,EmployeeLevelText) AS 
-(
 	SELECT EmployeeID,
-	       
->>>>>>> aa3a58b56c70c3191cb3cb88a1e5e42e41dc5724
 		   FirstName,
 		   LastName,
 		   Title,
