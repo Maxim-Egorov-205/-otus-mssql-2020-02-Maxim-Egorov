@@ -255,14 +255,21 @@ INSERT INTO dbo.MyEmployees VALUES
 ,(16, N'David',N'Bradley', N'Marketing Manager', 4, 273)
 ,(23, N'Mary', N'Gibson', N'Marketing Specialist', 4, 16);
 
-WITH CTE_MyEmployees (EmployeeID,FirstName,LastName,Title,ManagerID,EmployeeLevel) AS 
+
+DECLARE @MyEmployees TABLE (EmployeeID INT, Name VARCHAR(254), Title VARCHAR(254), EmployeeLevel INT) --объявляем табличную переменную
+
+DROP TABLE IF EXISTS #MyEmployees             --создаем локальную временную таблицу (можно было не создавать, создатся и так при inserte)
+CREATE TABLE #MyEmployees (EmployeeID INT, Name VARCHAR(254), Title VARCHAR(254), EmployeeLevel INT);
+
+WITH CTE_MyEmployees (EmployeeID,FirstName,LastName,Title,ManagerID,EmployeeLevel,EmployeeLevelText) AS 
 (
 	SELECT EmployeeID,
-	       FirstName,
+		   FirstName,
 		   LastName,
 		   Title,
 		   ManagerID,
-		   1 as EmployeeLevel
+		   1 as EmployeeLevel,
+		   CAST('' AS VARCHAR(MAX)) as EmployeeLevelText
 	FROM dbo.MyEmployees 
 	WHERE ManagerID IS NULL
 	UNION ALL
@@ -271,17 +278,27 @@ WITH CTE_MyEmployees (EmployeeID,FirstName,LastName,Title,ManagerID,EmployeeLeve
 		   e.LastName,
 		   e.Title,
 		   e.ManagerID,
-		   c.EmployeeLevel+1
+		   c.EmployeeLevel+1,
+		   c.EmployeeLevelText+'|'
 	FROM MyEmployees e
 		JOIN CTE_MyEmployees c
 			ON e.ManagerID=c.EmployeeID
 )
 
+--запись в табличную переменную
+INSERT INTO @MyEmployees
 SELECT  c.EmployeeID,
-        c.FirstName +' '+c.LastName AS Name,
+        c.EmployeeLevelText +' '+ c.FirstName +' '+c.LastName AS Name,
 		c.Title,
 		c.EmployeeLevel
 FROM CTE_MyEmployees c
+ORDER BY c.EmployeeLevel
 
 
-
+--запсиь во временную таблицу
+INSERT INTO #MyEmployees
+SELECT  EmployeeID,
+         Name,
+		Title,
+		EmployeeLevel
+FROM @MyEmployees 
